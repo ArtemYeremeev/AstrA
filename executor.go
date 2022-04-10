@@ -13,10 +13,10 @@ const (
 
 // Classifier описывает структуру классификатора
 type Classifier struct {
+	MapTokenToCategory map[string]map[string]int
+	CategoriesCount    map[string]int
 	tokenizer          Tokenizer
 	mu                 sync.RWMutex
-	mapTokenToCategory map[string]map[string]int
-	categoriesCount    map[string]int
 }
 
 // Option описывает дополнительный настройки классификатора
@@ -25,10 +25,11 @@ type Option func(c *Classifier) error
 // New создает новый классификатор со стандартным токенизатором
 func New(opts ...Option) *Classifier {
 	c := &Classifier{
-		mapTokenToCategory: make(map[string]map[string]int),
-		categoriesCount:    make(map[string]int),
+		MapTokenToCategory: make(map[string]map[string]int),
+		CategoriesCount:    make(map[string]int),
 		tokenizer:          NewTokenizer(),
 	}
+
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -107,16 +108,16 @@ func (c *Classifier) GetProb(str string) (map[string]float64, string) {
 
 // addToken добавляет новый токен в категорию
 func (c *Classifier) addToken(t string, cat string) {
-	if _, ok := c.mapTokenToCategory[t]; !ok {
-		c.mapTokenToCategory[t] = make(map[string]int)
+	if _, ok := c.MapTokenToCategory[t]; !ok {
+		c.MapTokenToCategory[t] = make(map[string]int)
 	}
-	c.mapTokenToCategory[t][cat]++
+	c.MapTokenToCategory[t][cat]++
 }
 
 // countTokensInCategory возвращает вес token в категории
 func (c *Classifier) countTokenInCategory(token string, category string) float64 {
-	if _, ok := c.mapTokenToCategory[token]; ok {
-		return float64(c.mapTokenToCategory[token][category])
+	if _, ok := c.MapTokenToCategory[token]; ok {
+		return float64(c.MapTokenToCategory[token][category])
 	}
 	return 0.0
 }
@@ -125,7 +126,7 @@ func (c *Classifier) countTokenInCategory(token string, category string) float64
 func (c *Classifier) calcTokenWeight(token string) float64 {
 	var weight float64
 	for _, cat := range c.getModelCategories() {
-		weight += float64(c.mapTokenToCategory[token][cat])
+		weight += float64(c.MapTokenToCategory[token][cat])
 	}
 
 	// При отсутствии токена в классификаторе, возвращается минимальный вес
@@ -137,13 +138,13 @@ func (c *Classifier) calcTokenWeight(token string) float64 {
 
 // addCategory добавляет в модель новую категорию cat
 func (c *Classifier) addCategory(cat string) {
-	c.categoriesCount[cat]++
+	c.CategoriesCount[cat]++
 }
 
 // categoryTokensCount возвращает количество токенов в category
 func (c *Classifier) categoryTokensCount(cat string) float64 {
-	if _, ok := c.categoriesCount[cat]; ok {
-		return float64(c.categoriesCount[cat])
+	if _, ok := c.CategoriesCount[cat]; ok {
+		return float64(c.CategoriesCount[cat])
 	}
 	return 0.0
 }
@@ -151,7 +152,7 @@ func (c *Classifier) categoryTokensCount(cat string) float64 {
 // countOverallTokens возращает общее количество токенов в модели
 func (c *Classifier) countOverallTokens() int {
 	sum := 0
-	for _, v := range c.categoriesCount {
+	for _, v := range c.CategoriesCount {
 		sum += v
 	}
 	return sum
@@ -160,7 +161,7 @@ func (c *Classifier) countOverallTokens() int {
 // getModelCategories возвращает общий список категорий в модели
 func (c *Classifier) getModelCategories() []string {
 	var keys []string
-	for k := range c.categoriesCount {
+	for k := range c.CategoriesCount {
 		keys = append(keys, k)
 	}
 	return keys
@@ -199,6 +200,6 @@ func (c *Classifier) getWeightedProb(token string, cat string) float64 {
 		sum += c.countTokenInCategory(token, category)
 	}
 
-	result := ((c.calcTokenWeight(token) * 1 / float64(len(c.categoriesCount))) + (sum * prob)) / (1.0 + sum)
+	result := ((c.calcTokenWeight(token) * 1 / float64(len(c.CategoriesCount))) + (sum * prob)) / (1.0 + sum)
 	return result
 }
