@@ -178,7 +178,8 @@ func (c *Classifier) getTokenProb(token string, category string) float64 {
 
 // getProb получает вероятность принадлежности токена к категории с учетом их относительных весов
 func (c *Classifier) getProb(data string, category string) float64 {
-	categoryProb := c.categoryTokensCount(category) / float64(c.countOverallTokens())
+	// categoryProb := c.categoryTokensCount(category) / float64(c.countOverallTokens())
+	categoryProb := float64(1 / len(c.CategoriesCount))
 	docProb := c.getTextProb(data, category)
 	return docProb * categoryProb
 }
